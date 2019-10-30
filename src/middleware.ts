@@ -1,8 +1,8 @@
 import { Context, Middleware } from 'koa';
 import * as Router from 'koa-better-router';
 import * as koaBody from 'koa-body';
-import * as mongoose from 'mongoose';
 import { Route } from './interfaces';
+import * as orm from './orm';
 
 export function timer(): Middleware {
   return async (ctx, next) => {
@@ -27,7 +27,7 @@ export function errorHandler(): Middleware {
     try {
       await next();
     } catch (err) {
-      if (err instanceof mongoose.Error.ValidationError) {
+      if (err instanceof orm.Error.ValidationError) {
         ctx.status = 400;
         ctx.body = {
           invalidAttributes: {},

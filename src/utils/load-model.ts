@@ -1,8 +1,8 @@
-import * as mongoose from 'mongoose';
+import * as orm from '../orm';
 
-export function loadModel<T extends mongoose.Document>(name: string, schema: mongoose.Schema): mongoose.Model<T> {
-  if (mongoose.models[name]) {
-    return mongoose.models[name];
+export function loadModel<T extends orm.Document>(name: string, schema: orm.Schema): orm.Model<T> {
+  if (orm.models[name]) {
+    return orm.models[name];
   }
-  return mongoose.model<T>(name, schema);
+  return orm.model<T>(name, schema);
 }

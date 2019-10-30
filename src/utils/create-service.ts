@@ -5,9 +5,9 @@ import * as Koa from 'koa';
 
 dotenv.config();
 
+import { DbModels, DbOptions, Route, ServiceOptions } from '../interfaces';
+import * as middleware from '../middleware';
 import { connectToDb } from './connect-to-db';
-import { DbModels, DbOptions, Route, ServiceOptions } from './interfaces';
-import * as middleware from './middleware';
 
 class CodeverosMicro {
   private app = new Koa();
@@ -25,6 +25,15 @@ class CodeverosMicro {
   }
 
   public start(): Server {
+    this.connectToDb();
+    this.initializeMiddleware();
+
+    return this.app.listen(this.port, () => {
+      console.log(`Listening on ${this.port}`);
+    });
+  }
+
+  private connectToDb() {
     connectToDb({
       database: process.env.DB_DATABASE,
       host: process.env.DB_HOST,
@@ -32,12 +41,6 @@ class CodeverosMicro {
       port: process.env.DB_PORT,
       user: process.env.DB_USER,
     }).then(() => console.log('connected to database'), (err: Error) => console.error(new Date(), String(err)));
-
-    this.initializeMiddleware();
-
-    return this.app.listen(this.port, () => {
-      console.log(`Listening on ${this.port}`);
-    });
   }
 
   private initializeMiddleware() {

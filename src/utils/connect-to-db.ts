@@ -1,6 +1,6 @@
-import { DbOptions } from './interfaces';
+import { DbOptions } from '../interfaces';
 
-import * as mongoose from 'mongoose';
+import * as orm from '../orm';
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -14,7 +14,7 @@ async function connect(uri: string): Promise<void> {
   };
 
   try {
-    await mongoose.connect(uri, options);
+    await orm.connect(uri, options);
   } catch (err) {
     if (err.message && err.message.match(/failed to connect to server .* on first connect/)) {
       console.log(new Date(), String(err));

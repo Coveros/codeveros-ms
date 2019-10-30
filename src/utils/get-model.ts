@@ -1,5 +1,5 @@
-import * as mongoose from 'mongoose';
+import * as orm from '../orm';
 
-export function getModel(modelName: string): mongoose.Model<any> {
-  return mongoose.models[modelName];
+export function getModel(modelName: string): orm.Model<any> {
+  return orm.models[modelName];
 }
