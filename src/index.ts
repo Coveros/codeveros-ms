@@ -1,6 +1,7 @@
-import * as defaultActions from './default-actions';
+import { createService } from './create-service';
+import * as crudService from './crud-service';
 import * as defaultController from './default-controller';
 import * as orm from './orm';
+import * as utils from './utils';
 
-export * from './utils';
-export { defaultActions, defaultController, orm };
+export { createService, crudService, defaultController, orm, utils };

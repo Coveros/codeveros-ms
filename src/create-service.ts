@@ -5,9 +5,9 @@ import * as Koa from 'koa';
 
 dotenv.config();
 
-import { DbModels, DbOptions, Route, ServiceOptions } from '../interfaces';
-import * as middleware from '../middleware';
 import { connectToDb } from './connect-to-db';
+import { DbModels, DbOptions, Route, ServiceOptions } from './interfaces';
+import * as middleware from './middleware';
 
 class CodeverosMicro {
   private app = new Koa();

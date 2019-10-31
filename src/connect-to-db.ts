@@ -1,6 +1,6 @@
-import { DbOptions } from '../interfaces';
+import { DbOptions } from './interfaces';
 
-import * as orm from '../orm';
+import * as orm from './orm';
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
