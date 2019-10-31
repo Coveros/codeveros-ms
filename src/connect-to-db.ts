@@ -1,7 +1,8 @@
 import { DbOptions } from './interfaces';
-
 import * as orm from './orm';
+import { getLogger } from './utils/get-logger';
 
+const logger = getLogger();
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function connect(uri: string): Promise<void> {
@@ -17,10 +18,10 @@ async function connect(uri: string): Promise<void> {
     await orm.connect(uri, options);
   } catch (err) {
     if (err.message && err.message.match(/failed to connect to server .* on first connect/)) {
-      console.log(new Date(), String(err));
+      logger.error('Failed to connect to db on initial attempt: ', err);
       // Wait for a bit, then try to connect again
       await timeout(10000);
-      console.log('Retrying first connect...');
+      logger.info('Retrying first connect...');
       await connect(uri);
     } else {
       throw err;
