@@ -3,11 +3,12 @@ import * as Router from 'koa-better-router';
 import * as koaBody from 'koa-body';
 import { Route } from './interfaces';
 import * as orm from './orm';
+import { getLogger } from './utils';
 
 export function timer(): Middleware {
   return async (ctx, next) => {
     if (ctx.path !== '/health-check') {
-      console.log(`Request for ${ctx.method} ${ctx.path} received at ${Date.now()}`);
+      ctx.codeveros.logger.info(`Request for ${ctx.method} ${ctx.path} received at ${Date.now()}`);
     }
     await next();
   };
@@ -17,6 +18,7 @@ export function initialize(): Middleware {
   return async (ctx, next) => {
     ctx.codeveros = {
       Model: null,
+      logger: getLogger(),
     };
     await next();
   };
@@ -24,10 +26,12 @@ export function initialize(): Middleware {
 
 export function errorHandler(): Middleware {
   return async (ctx, next) => {
+    const logger = ctx.codeveros.logger;
     try {
       await next();
     } catch (err) {
       if (err instanceof orm.Error.ValidationError) {
+        logger.verbose('Caught Validation Error: ', err);
         ctx.status = 400;
         ctx.body = {
           invalidAttributes: {},
@@ -41,7 +45,7 @@ export function errorHandler(): Middleware {
           }
         }
       } else {
-        console.error(err);
+        logger.error('Caught Error with request: ', err);
         ctx.status = err.status || 500;
         ctx.body = { msg: err.expose && err.message ? err.message : 'Error performing action' };
       }
