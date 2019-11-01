@@ -8,6 +8,7 @@ dotenv.config();
 import { connectToDb } from './connect-to-db';
 import { DbModels, DbOptions, Route, ServiceOptions } from './interfaces';
 import * as middleware from './middleware';
+import * as orm from './orm';
 import { getLogger } from './utils';
 
 class CodeverosMicro {
@@ -53,14 +54,16 @@ class CodeverosMicro {
   private initializeMiddleware() {
     this.app.on('error', (err, ctx) => {
       const logger = getLogger();
-      if (err.status === 500) {
+      if (err instanceof orm.Error.ValidationError || err.status === 401) {
+        logger.info('Validation or 401 Error thrown: ', err);
+      } else {
         logger.error(`Server Error - ${err.stack}`);
       }
     });
 
+    this.app.use(middleware.initialize());
     this.app.use(middleware.timer());
     this.app.use(cors());
-    this.app.use(middleware.initialize());
     this.app.use(middleware.errorHandler());
     this.app.use(middleware.setModel(this.models));
     this.app.use(middleware.setupHealthCheck());
