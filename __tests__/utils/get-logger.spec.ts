@@ -1,7 +1,7 @@
 import * as winston from 'winston';
-import { getLogger } from '../src/utils/get-logger';
+import { getLogger } from '../../src/utils/get-logger';
 
-describe('Get Logger', () => {
+describe('getLogger', () => {
   const loggerId = 'default';
 
   afterEach(() => {
@@ -24,5 +24,11 @@ describe('Get Logger', () => {
     const level = 'verbose';
     const logger = getLogger(loggerId, { level });
     expect(logger.level).toEqual(level);
+  });
+
+  test('should return existing logger if already created', () => {
+    const logger = getLogger('customLogger');
+    const anotherLogger = getLogger('customLogger');
+    expect(logger).toEqual(anotherLogger);
   });
 });
