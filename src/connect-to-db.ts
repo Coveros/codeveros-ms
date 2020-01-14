@@ -29,9 +29,8 @@ async function connect(uri: string): Promise<void> {
   }
 }
 
-export function connectToDb(options: DbOptions = {}) {
-  const { host = 'localhost', port = '27017', database = 'myapp' } = options;
+export function connectToDb(options: DbOptions) {
   const authPart = options.user ? `${options.user}:${options.pass}@` : '';
-  const uri = options.uri || `mongodb://${authPart}${host}:${port}/${database}`;
+  const uri = options.uri || `mongodb://${authPart}${options.host}:${options.port}/${options.database}`;
   return connect(uri);
 }

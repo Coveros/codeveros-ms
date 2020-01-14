@@ -20,15 +20,29 @@ class CodeverosMicro {
 
   constructor(options?: ServiceOptions) {
     options = options || ({} as ServiceOptions);
+
+    const envDbOptions = {
+      database: process.env.DB_DATABASE,
+      host: process.env.DB_HOST,
+      pass: process.env.DB_PASS,
+      port: process.env.DB_PORT || '27017',
+      user: process.env.DB_USER,
+    };
+
     this.routes = options.routes;
-    this.dbOptions = options.dbOptions || ({} as DbOptions);
+    this.dbOptions = { ...envDbOptions, ...(options.dbOptions || {}) };
     this.models = options.models || ({} as DbModels);
     this.port = options.port || (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080);
   }
 
   public start(): Server {
     const logger = getLogger();
-    this.connectToDb();
+
+    if (!this.dbOptions.uri && !(this.dbOptions.host && this.dbOptions.port)) {
+      logger.info('Skipping database connection because necessary configuration not provided');
+    } else {
+      this.connectToDb();
+    }
     this.initializeMiddleware();
 
     return this.app.listen(this.port, () => {
@@ -38,14 +52,7 @@ class CodeverosMicro {
 
   private connectToDb() {
     const logger = getLogger();
-
-    connectToDb({
-      database: process.env.DB_DATABASE,
-      host: process.env.DB_HOST,
-      pass: process.env.DB_PASS,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-    }).then(
+    connectToDb(this.dbOptions).then(
       () => logger.info('connected to database'),
       (err: Error) => logger.error('Error connecting to the db: ', err),
     );
