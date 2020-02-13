@@ -7,4 +7,5 @@ export interface ServiceOptions {
   models?: DbModels;
   port?: number;
   dbOptions?: DbOptions;
+  specPath?: string;
 }

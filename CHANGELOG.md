@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.0-dev] - 2020-02-11
+### Added
+- Route to retrieve API Docs (GET /api/docs). Returns the OpenAPI specification or a 500 error if not retrieved.
+- createService options parameter to specify OpenAPI spec file location
+  (**options.specPath**). Defaults to `swagger.yaml` and `swagger.json` in the project root directory.
+
 ## [0.2.0-dev] - 2020-01-14
 ### Changed
 - **BREAKING**: Made database connection optional. If configuration not set via environment variables or passed in directly

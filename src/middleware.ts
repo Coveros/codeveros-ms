@@ -1,9 +1,10 @@
 import { Context, Middleware } from 'koa';
 import * as Router from 'koa-better-router';
 import * as koaBody from 'koa-body';
+
 import { Route } from './interfaces';
 import * as orm from './orm';
-import { getLogger } from './utils';
+import { getApiSpec, getLogger } from './utils';
 
 export function timer(): Middleware {
   return async (ctx, next) => {
@@ -69,6 +70,23 @@ export function setupHealthCheck(): Middleware {
   const router = Router();
   router.addRoute('GET /health-check', (ctx: Context) => {
     ctx.status = 200;
+  });
+  return router.middleware();
+}
+
+export function setupApiDocsRoute(specPath: string = ''): Middleware {
+  const router = Router();
+
+  router.addRoute('GET /api/docs', async (ctx: Context) => {
+    const logger = ctx.codeveros.logger;
+    logger.verbose('Retrieving API docs');
+
+    try {
+      ctx.body = await getApiSpec(specPath);
+    } catch (e) {
+      logger.error('Failed to load API docs');
+      ctx.throw(500, 'Failed to load API docs');
+    }
   });
   return router.middleware();
 }
