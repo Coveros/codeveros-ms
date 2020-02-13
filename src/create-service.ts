@@ -17,6 +17,7 @@ class CodeverosMicro {
   private port = 8080;
   private dbOptions: DbOptions;
   private models: DbModels;
+  private specPath: string;
 
   constructor(options?: ServiceOptions) {
     options = options || ({} as ServiceOptions);
@@ -29,6 +30,7 @@ class CodeverosMicro {
       user: process.env.DB_USER,
     };
 
+    this.specPath = options.specPath || '';
     this.routes = options.routes;
     this.dbOptions = { ...envDbOptions, ...(options.dbOptions || {}) };
     this.models = options.models || ({} as DbModels);
@@ -74,6 +76,7 @@ class CodeverosMicro {
     this.app.use(middleware.errorHandler());
     this.app.use(middleware.setModel(this.models));
     this.app.use(middleware.setupHealthCheck());
+    this.app.use(middleware.setupApiDocsRoute(this.specPath));
     this.app.use(middleware.setupApi(this.routes));
   }
 }
