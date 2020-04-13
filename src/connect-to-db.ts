@@ -3,7 +3,7 @@ import * as orm from './orm';
 import { getLogger } from './utils/get-logger';
 
 const logger = getLogger();
-const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connect(uri: string): Promise<void> {
   const options = {
