@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 - **BREAKING**: createService.start() now returns a Promise that resolves to the initialized app server object, rather than synchronously returning the app server object
 - **BREAKING**: If database parameters are defined, the app server creation will now wait until the database connection is made before starting the app server
 - **BREAKING**: The initial database connection will continue to be attempted regardless of the type of Error thrown by mongoose.connect(). Before it was limited to a specific error.
+- Changed build, test, and publish process to use Node.js 14.x.
+- Updated many dependencies, including typescript, koa, and mongoose
 
 ## [0.3.0-dev] - 2020-02-11
 ### Added
