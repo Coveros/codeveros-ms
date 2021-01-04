@@ -37,13 +37,13 @@ class CodeverosMicro {
     this.port = options.port || (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080);
   }
 
-  public start(): Server {
+  public async start(): Promise<Server> {
     const logger = getLogger();
 
     if (!this.dbOptions.uri && !(this.dbOptions.host && this.dbOptions.port)) {
       logger.info('Skipping database connection because necessary configuration not provided');
     } else {
-      this.connectToDb();
+      await this.connectToDb();
     }
     this.initializeMiddleware();
 
@@ -52,16 +52,17 @@ class CodeverosMicro {
     });
   }
 
-  private connectToDb() {
+  private async connectToDb() {
     const logger = getLogger();
-    connectToDb(this.dbOptions).then(
-      () => logger.info('connected to database'),
-      (err: Error) => logger.error('Error connecting to the db: ', err),
-    );
+    try {
+      await connectToDb(this.dbOptions);
+    } catch (err: any) {
+      logger.error('Error connecting to the db: ', err);
+    }
   }
 
   private initializeMiddleware() {
-    this.app.on('error', (err, ctx) => {
+    this.app.on('error', (err: any, ctx) => {
       const logger = getLogger();
       if (err instanceof orm.Error.ValidationError || err.status === 401) {
         logger.info('Validation or 401 Error thrown: ', err);
