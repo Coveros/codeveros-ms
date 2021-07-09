@@ -1,4 +1,4 @@
-export { createService } from './create-service';
+export { createService, CodeverosMicro } from './create-service';
 export * as crudService from './crud-service';
 export * as defaultController from './default-controller';
 export * as orm from './orm';

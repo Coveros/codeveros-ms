@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { safeLoad } from 'js-yaml';
+import { load } from 'js-yaml';
 import * as path from 'path';
 
 const defaultPaths = [path.resolve('swagger.yaml'), path.resolve('swagger.json')];
@@ -12,12 +12,12 @@ async function readFile(specPath: string): Promise<string> {
   });
 }
 
-export async function getApiSpec(definedPath: string | null = null): Promise<string | object | undefined> {
+export async function getApiSpec(definedPath: string | null = null): Promise<string | number | object | null | undefined> {
   const specPaths = definedPath ? [definedPath, ...defaultPaths] : defaultPaths;
   for (const specPath of specPaths) {
     try {
       const specFile = await readFile(specPath);
-      return safeLoad(specFile);
+      return load(specFile);
     } catch (e) {
       // swallow error, attempt next file
     }

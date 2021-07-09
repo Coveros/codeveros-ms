@@ -5,8 +5,8 @@ import * as orm from '../src/orm';
 describe.skip('Connect To DB', () => {
   let mongod: MongoMemoryServer;
 
-  beforeEach(() => {
-    mongod = new MongoMemoryServer();
+  beforeEach(async () => {
+    mongod = await MongoMemoryServer.create();
   });
 
   afterEach(async () => {
@@ -20,8 +20,8 @@ describe.skip('Connect To DB', () => {
   });
 
   test('connect with options', async () => {
-    const port = await mongod.getPort();
-    const database = await mongod.getDbName();
+    const port = mongod.instanceInfo?.port || '';
+    const database = mongod.instanceInfo?.dbName;
     const host = '127.0.0.1';
     const dbOptions = { port: port.toString(), database, host };
     await connectToDb(dbOptions);
