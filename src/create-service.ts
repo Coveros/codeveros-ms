@@ -12,12 +12,12 @@ import * as orm from './orm';
 import { getLogger } from './utils';
 
 export class CodeverosMicro {
-  private _app = new Koa();
-  private _routes: Route[];
-  private _port = 8080;
-  private _dbOptions: DbOptions;
-  private _models: DbModels;
-  private _specPath: string;
+  private app = new Koa();
+  private routes: Route[];
+  private port = 8080;
+  private dbOptions: DbOptions;
+  private models: DbModels;
+  private specPath: string;
 
   constructor(options?: ServiceOptions) {
     options = options || ({} as ServiceOptions);
@@ -30,63 +30,39 @@ export class CodeverosMicro {
       user: process.env.DB_USER,
     };
 
-    this._specPath = options.specPath || '';
-    this._routes = options.routes;
-    this._dbOptions = { ...envDbOptions, ...(options.dbOptions || {}) };
-    this._models = options.models || ({} as DbModels);
-    this._port = options.port || (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080);
+    this.specPath = options.specPath || '';
+    this.routes = options.routes;
+    this.dbOptions = { ...envDbOptions, ...(options.dbOptions || {}) };
+    this.models = options.models || ({} as DbModels);
+    this.port = options.port || (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080);
   }
 
   public async start(): Promise<Server> {
     const logger = getLogger();
 
-    if (!this._dbOptions.uri && !(this._dbOptions.host && this._dbOptions.port)) {
+    if (!this.dbOptions.uri && !(this.dbOptions.host && this.dbOptions.port)) {
       logger.info('Skipping database connection because necessary configuration not provided');
     } else {
       await this.connectToDb();
     }
     this.initializeMiddleware();
 
-    return this._app.listen(this._port, () => {
-      logger.info(`Listening on ${this._port}`);
+    return this.app.listen(this.port, () => {
+      logger.info(`Listening on ${this.port}`);
     });
-  }
-
-  get app(): Koa {
-    return this._app;
-  }
-
-  get port(): number {
-    return this._port;
-  }
-
-  get routes(): Route[] {
-    return this._routes;
-  }
-
-  get dbOptions(): DbOptions {
-    return this._dbOptions;
-  }
-
-  get models(): DbModels {
-    return this._models;
-  }
-
-  get specPath(): string {
-    return this._specPath;
   }
 
   private async connectToDb() {
     const logger = getLogger();
     try {
-      await connectToDb(this._dbOptions);
+      await connectToDb(this.dbOptions);
     } catch (err: any) {
       logger.error('Error connecting to the db: ', err);
     }
   }
 
   private initializeMiddleware() {
-    this._app.on('error', (err: any, ctx) => {
+    this.app.on('error', (err: any, ctx) => {
       const logger = getLogger();
       if (err instanceof orm.Error.ValidationError || err.status === 401) {
         logger.info('Validation or 401 Error thrown: ', err);
@@ -95,14 +71,14 @@ export class CodeverosMicro {
       }
     });
 
-    this._app.use(middleware.initialize());
-    this._app.use(middleware.timer());
-    this._app.use(cors());
-    this._app.use(middleware.errorHandler());
-    this._app.use(middleware.setModel(this._models));
-    this._app.use(middleware.setupHealthCheck());
-    this._app.use(middleware.setupApiDocsRoute(this._specPath));
-    this._app.use(middleware.setupApi(this._routes));
+    this.app.use(middleware.initialize());
+    this.app.use(middleware.timer());
+    this.app.use(cors());
+    this.app.use(middleware.errorHandler());
+    this.app.use(middleware.setModel(this.models));
+    this.app.use(middleware.setupHealthCheck());
+    this.app.use(middleware.setupApiDocsRoute(this.specPath));
+    this.app.use(middleware.setupApi(this.routes));
   }
 }
 

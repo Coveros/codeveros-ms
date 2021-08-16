@@ -1,5 +1,5 @@
 import * as winston from 'winston';
-import { getLogger } from '../../src/utils/get-logger';
+import { getLogger } from './get-logger';
 
 describe('getLogger', () => {
   const loggerId = 'default';

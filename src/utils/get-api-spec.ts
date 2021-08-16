@@ -12,7 +12,9 @@ async function readFile(specPath: string): Promise<string> {
   });
 }
 
-export async function getApiSpec(definedPath: string | null = null): Promise<string | number | object | null | undefined> {
+export async function getApiSpec(
+  definedPath: string | null = null,
+): Promise<string | number | object | null | undefined> {
   const specPaths = definedPath ? [definedPath, ...defaultPaths] : defaultPaths;
   for (const specPath of specPaths) {
     try {

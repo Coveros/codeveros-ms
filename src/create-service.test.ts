@@ -1,11 +1,16 @@
-import { createService, CodeverosMicro } from '../src/create-service';
-import { DbOptions, Route } from '../src/interfaces';
-import { Context } from 'koa';
-import { DbModels, ServiceOptions } from '../lib/interfaces';
-import * as orm from '../src/orm';
 import * as Koa from 'koa';
+import * as cors from '@koa/cors';
+
+import { createService, CodeverosMicro } from '../src/create-service';
+import { DbOptions, ServiceOptions } from './interfaces';
+import * as orm from './orm';
 import { connectToDb } from './connect-to-db';
 import { getLogger } from './utils';
+import * as middleware from './middleware';
+
+jest.mock('../src/orm');
+
+jest.mock('@koa/cors', () => jest.fn(() => 'cors'));
 
 jest.mock('./utils', () => {
   return {
@@ -13,12 +18,23 @@ jest.mock('./utils', () => {
     getLogger: jest.fn(() => {
       return {
         info: jest.fn(),
-        error: jest.fn()
-      }
-    })
-  }
+        error: jest.fn(),
+      };
+    }),
+  };
 });
 
+jest.mock('./middleware', () => {
+  return {
+    timer: jest.fn(() => 'timer'),
+    initialize: jest.fn(() => 'initialize'),
+    errorHandler: jest.fn(() => 'errorHandler'),
+    setModel: jest.fn(() => 'setModel'),
+    setupHealthCheck: jest.fn(() => 'setupHealthCheck'),
+    setupApiDocsRoute: jest.fn(() => 'setupApiDocsRoute'),
+    setupApi: jest.fn(() => 'setupApi'),
+  };
+});
 
 const mockKoaOn = jest.fn();
 const mockKoaUse = jest.fn();
@@ -26,152 +42,263 @@ const mockKoaListen = jest.fn();
 jest.mock('koa', () => {
   return jest.fn().mockImplementation(() => {
     return {
-      on: mockKoaOn, use: mockKoaUse, listen: mockKoaListen
-    }
-  })
+      on: mockKoaOn,
+      use: mockKoaUse,
+      listen: mockKoaListen,
+    };
+  });
 });
 
 jest.mock('./connect-to-db');
 
-describe('Create CodeverosMicro Service', () => {
-  describe('With Default Options', () => {
-    let testService: CodeverosMicro;
+describe('createService', () => {
+  test('returns a CodeverosMicro instance', () => {
+    const testService = createService({ routes: [] });
+    expect(testService).toBeInstanceOf(CodeverosMicro);
+  });
+});
+
+describe('CodeverosMicro start', () => {
+  const OLD_ENV = process.env;
+  let serviceOptions: ServiceOptions;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV };
+    mockKoaListen.mockClear();
+    mockKoaUse.mockClear();
+    mockKoaOn.mockClear();
+    serviceOptions = { routes: [] };
+  });
+
+  afterAll(() => {
+    process.env = OLD_ENV;
+  });
+
+  test('returns the result of Koa.listen()', async () => {
+    const mockListenReturn = 'hello I am the this._app.listen() return';
+    mockKoaListen.mockReturnValueOnce(mockListenReturn);
+    const testService = createService(serviceOptions);
+    const app = await testService.start();
+    expect(app).toEqual(mockListenReturn);
+  });
+
+  test('initiates the middleware in the correct order', async () => {
+    const testService = createService(serviceOptions);
+    await testService.start();
+    expect(mockKoaUse.mock.calls.length).toEqual(8);
+    expect(mockKoaUse.mock.calls[0][0]).toEqual('initialize');
+    expect(mockKoaUse.mock.calls[1][0]).toEqual('timer');
+    expect(mockKoaUse.mock.calls[2][0]).toEqual('cors');
+    expect(mockKoaUse.mock.calls[3][0]).toEqual('errorHandler');
+    expect(mockKoaUse.mock.calls[4][0]).toEqual('setModel');
+    expect(mockKoaUse.mock.calls[5][0]).toEqual('setupHealthCheck');
+    expect(mockKoaUse.mock.calls[6][0]).toEqual('setupApiDocsRoute');
+    expect(mockKoaUse.mock.calls[7][0]).toEqual('setupApi');
+  });
+
+  describe('sets the server port', () => {
+    test('to 8080 by default', async () => {
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(mockKoaListen).toHaveBeenCalledTimes(1);
+      expect(mockKoaListen).toHaveBeenCalledWith(8080, expect.any(Function));
+    });
+
+    test('to the port value passed in to createService', async () => {
+      const port = 9000;
+      const testService = createService({ routes: [], port });
+      await testService.start();
+      expect(mockKoaListen).toHaveBeenCalledTimes(1);
+      expect(mockKoaListen).toHaveBeenCalledWith(port, expect.any(Function));
+    });
+
+    test('to the PORT environment variable', async () => {
+      const port = 2727;
+      process.env.PORT = port.toString();
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(mockKoaListen).toHaveBeenCalledWith(port, expect.any(Function));
+    });
+
+    test('to the PORT environment variable when a value is also passed in', async () => {
+      const port = 6000;
+      process.env.PORT = '2727';
+      const testService = createService({ routes: [], port });
+      await testService.start();
+      expect(mockKoaListen).toHaveBeenCalledWith(port, expect.any(Function));
+    });
+  });
+
+  describe('initiates the setupApiDocsRoute middleware', () => {
+    test('with an empty string by default', async () => {
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setupApiDocsRoute).toHaveBeenCalledWith('');
+    });
+
+    test('with the specPath value passed in to createService', async () => {
+      serviceOptions.specPath = '/src/path/to/swagger.yaml';
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setupApiDocsRoute).toHaveBeenCalledWith(serviceOptions.specPath);
+    });
+  });
+
+  describe('initiates the setModel middleware', () => {
+    test('with an empty object by default', async () => {
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setModel).toHaveBeenCalledWith({});
+    });
+
+    test('with the models value passed in to createService', async () => {
+      serviceOptions.models = {
+        MockModel: {} as jest.MockedClass<typeof orm.Model>,
+      };
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setModel).toHaveBeenCalledWith(serviceOptions.models);
+    });
+  });
+
+  describe('initiates the setupApi middleware', () => {
+    test('with an empty array by default', async () => {
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setupApi).toHaveBeenCalledWith([]);
+    });
+
+    test('with the routes value passed in to createService', async () => {
+      serviceOptions.routes = [{ path: '/route-one', action: (ctx: Koa.Context) => 'route-one' }];
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(middleware.setupApi).toHaveBeenCalledWith(serviceOptions.routes);
+    });
+  });
+
+  describe('database connection', () => {
+    let defaultDbOptions: DbOptions;
+    let host: string;
+    let port: string;
 
     beforeEach(() => {
-      testService = createService({ routes: [] });
-    });
-
-    test('Default port is 8080', () => {
-      expect(testService.port).toEqual(8080);
-    });
-
-    test('Default specPath', () => {
-      expect(testService.specPath).toEqual('');
-    });
-
-    test('Default DbOptions', () => {
-      const expected: DbOptions = {
+      defaultDbOptions = {
         database: undefined,
         host: undefined,
         pass: undefined,
         port: '27017',
-        user: undefined
-      }
-
-      expect(testService.dbOptions).toEqual(expected);
-    });
-
-    test('Default models', () => {
-      expect(testService.models).toEqual({});
-    });
-
-    test('Routes is empty array', () => {
-      expect(testService.routes).toEqual([])
-    });
-
-  });
-
-  describe('With createService options', () => {
-    test('Set specPath', () => {
-      const specPath = '/src/path/to/swagger.yaml';
-      const testService = createService({ routes: [], specPath });
-      expect(testService.specPath).toEqual(specPath);
-    });
-
-    test('Set Routes', () => {
-      const routes: Route[] = [
-        { path: '/route-one', action: (ctx: Context) => 'route-one' }
-      ];
-      const testService = createService({ routes });
-      expect(testService.routes).toEqual(routes);
-    });
-
-    test('Set Models', () => {
-      const modelSchema = new orm.Schema({ name: 'string' });
-      const models: DbModels = {
-        'model-one': orm.model('ModelOne', modelSchema)
+        user: undefined,
       };
-      const testService = createService({ routes: [], models });
-      expect(testService.models).toEqual(models);
+
+      host = 'localhost';
+      port = '5000';
+
+      serviceOptions.dbOptions = { host, port };
     });
 
-    test('Set Port', () => {
-      const port = 9090;
-      const testService = createService({ routes: [], port });
-      expect(testService.port).toEqual(port);
-    })
+    test('is skipped when database options not set', async () => {
+      serviceOptions.dbOptions = {};
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).not.toHaveBeenCalled();
+    });
 
-    test('Set DbOptions', () => {
+    test('is executed when uri passed in to createService', async () => {
+      const uri = 'abc';
+      serviceOptions.dbOptions = { uri };
+
+      const expectedDbOptions = { ...defaultDbOptions, ...{ uri } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with default port 27017 when dbOptions.host passed in to createService', async () => {
+      serviceOptions.dbOptions = { host };
+
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host } };
+
+      const testService = createService(serviceOptions);
+      const app = await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with dbOptions passed in to createService', async () => {
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port } };
+
+      const testService = createService(serviceOptions);
+      const app = await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with dbOptions.port passed in to createService', async () => {
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port } };
+
+      const testService = createService(serviceOptions);
+      const app = await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with DB_DATABASE environment variable as database value', async () => {
+      process.env.DB_DATABASE = 'the_database';
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port, database: 'the_database' } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with DB_HOST environment variable as host value', async () => {
+      process.env.DB_HOST = 'the_db_host';
+      serviceOptions.dbOptions = {};
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host: 'the_db_host' } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with DB_PASS environment variable as pass value', async () => {
+      process.env.DB_PASS = 'the_db_password';
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port, pass: 'the_db_password' } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with DB_PORT environment variable as port value', async () => {
+      process.env.DB_PORT = '2727';
+      serviceOptions.dbOptions = { host };
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port: '2727' } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with DB_USER environment variable as dbOptions user value', async () => {
+      process.env.DB_USER = 'the_user';
+      const expectedDbOptions = { ...defaultDbOptions, ...{ host, port, user: 'the_user' } };
+
+      const testService = createService(serviceOptions);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(expectedDbOptions);
+    });
+
+    test('is executed with dbOptions input to createService when environment variables also set', async () => {
       const dbOptions: DbOptions = {
         database: 'database',
         host: 'localhost',
         pass: 'password',
         port: '10000',
         user: 'admin',
-        uri: 'this-is-a-uri-string'
+        uri: 'this-is-a-uri-string',
       };
 
-      const testService = createService({ routes: [], dbOptions });
-    });
-  });
-
-  describe('With Environment Variable Configuration', () => {
-    const OLD_ENV = process.env;
-    const serviceOptions = { routes: [] };
-
-    beforeEach(() => {
-      jest.resetModules();
-      process.env = { ...OLD_ENV };
-    });
-
-    afterAll(() => {
-      process.env = OLD_ENV;
-    });
-
-    test('set database with DB_DATABASE environment variable', () => {
-      const actual = 'the_database';
-      process.env.DB_DATABASE = actual;
-      const testService = createService(serviceOptions);
-      expect(testService.dbOptions.database).toEqual(actual);
-    });
-
-    test('set host with DB_HOST environment variable', () => {
-      const actual = 'the_db_host';
-      process.env.DB_HOST = actual;
-      const testService = createService(serviceOptions);
-      expect(testService.dbOptions.host).toEqual(actual);
-    });
-
-    test('set db password with DB_PASS environment variable', () => {
-      const actual = 'the_db_password';
-      process.env.DB_PASS = actual;
-      const testService = createService(serviceOptions);
-      expect(testService.dbOptions.pass).toEqual(actual);
-    });
-
-    test('set db port with DB_PORT environment variable', () => {
-      const actual = '2727';
-      process.env.DB_PORT = actual;
-      const testService = createService(serviceOptions);
-      expect(testService.dbOptions.port).toEqual(actual);
-    });
-
-    test('set db user with DB_USER environment variable', () => {
-      const actual = 'the_user';
-      process.env.DB_USER = actual;
-      const testService = createService(serviceOptions);
-      expect(testService.dbOptions.user).toEqual(actual);
-    });
-
-    test('createService dbOptions input takes precedence over environment variables', () => {
-      const dbOptions: DbOptions = {
-        database: 'database',
-        host: 'localhost',
-        pass: 'password',
-        port: '10000',
-        user: 'admin',
-        uri: 'this-is-a-uri-string'
-      };
+      serviceOptions.dbOptions = dbOptions;
 
       process.env.DB_DATABASE = 'DB_DATABASE';
       process.env.DB_HOST = 'DB_HOST';
@@ -179,85 +306,9 @@ describe('Create CodeverosMicro Service', () => {
       process.env.DB_PORT = '5000';
       process.env.DB_USER = 'DB_USER';
 
-      const testService = createService({ routes: [], dbOptions });
-      expect(testService.dbOptions).toEqual(dbOptions);
-    });
-
-    test('set service port with PORT environment variable (converted to integer)', () => {
-      const actual = 2727;
-      process.env.PORT = actual.toString();
       const testService = createService(serviceOptions);
-      expect(testService.port).toEqual(actual);
+      await testService.start();
+      expect(connectToDb).toHaveBeenCalledWith(dbOptions);
     });
-
-    test('createService port input takes precedence over PORT environment variable', () => {
-      const actual = 6000;
-      process.env.PORT = '2727';
-      const testService = createService({ routes: [], port: actual });
-      expect(testService.port).toEqual(actual);
-    });
-
-
-  });
-});
-
-describe('Start Service', () => {
-  let testService: CodeverosMicro;
-  let serviceOptions: ServiceOptions;
-
-  beforeEach(() => {
-    serviceOptions = { routes: [] };
-    mockKoaUse.mockClear();
-    mockKoaListen.mockClear();
-  });
-
-  test('do not connect to db when database options not present', async () => {
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(connectToDb).not.toHaveBeenCalled();
-  });
-
-  test('connect to db when database uri', async () => {
-    serviceOptions.dbOptions = {uri: 'abc'};
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(connectToDb).toHaveBeenCalledWith(testService.dbOptions);
-  });
-
-  test('connect to db when database host and port present', async () => {
-    serviceOptions.dbOptions = {host: 'localhost', port: '5000'};
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(connectToDb).toHaveBeenCalledWith(testService.dbOptions);
-  });
-
-  test('connect to db when just database host present', async () => {
-    serviceOptions.dbOptions = {host: 'localhost'};
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(connectToDb).toHaveBeenCalledWith(testService.dbOptions);
-  });
-
-  describe('Initializing Middleware', () => {
-    test('the expected number of middleware are executed during start', async () => {
-      const testService = createService(serviceOptions);
-      const app = await testService.start();
-      expect(mockKoaUse.mock.calls.length).toEqual(8);
-    });
-  });
-
-
-  test('call listen on the app using configured port', async () => {
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(mockKoaListen).toHaveBeenCalled();
-  });
-
-  test('start should return the result of listen', async () => {
-    const mockListenReturn = 'hello I am the this._app.listen() return';
-    mockKoaListen.mockReturnValueOnce(mockListenReturn);
-    const testService = createService(serviceOptions);
-    const app = await testService.start();
-    expect(app).toEqual(mockListenReturn);
   });
 });

@@ -1,8 +1,8 @@
-import { connectToDb } from '../src/connect-to-db';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import * as orm from '../src/orm';
+import { connectToDb } from './connect-to-db';
+import * as orm from './orm';
 
-describe.skip('Connect To DB', () => {
+describe('Connect To DB', () => {
   let mongod: MongoMemoryServer;
 
   beforeEach(async () => {
