@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.5.0-dev] - 2021-08-16
+### Changed
+- Updated many dependencies
+- Added create-service tests
+
 ## [0.4.0-dev] - 2021-01-04
 ### Changed
 - **BREAKING**: createService.start() now returns a Promise that resolves to the initialized app server object, rather than synchronously returning the app server object
