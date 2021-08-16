@@ -42,6 +42,9 @@ export function errorHandler(): Middleware {
         for (const field in err.errors) {
           if (err.errors.hasOwnProperty(field)) {
             const error = err.errors[field];
+            if (error instanceof orm.Error.ValidationError) {
+              continue;
+            }
             ctx.body.invalidAttributes[field] = [{ rule: error.kind, message: error.message }];
           }
         }

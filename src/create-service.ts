@@ -11,7 +11,7 @@ import * as middleware from './middleware';
 import * as orm from './orm';
 import { getLogger } from './utils';
 
-class CodeverosMicro {
+export class CodeverosMicro {
   private app = new Koa();
   private routes: Route[];
   private port = 8080;
@@ -22,7 +22,7 @@ class CodeverosMicro {
   constructor(options?: ServiceOptions) {
     options = options || ({} as ServiceOptions);
 
-    const envDbOptions = {
+    const envDbOptions: DbOptions = {
       database: process.env.DB_DATABASE,
       host: process.env.DB_HOST,
       pass: process.env.DB_PASS,
