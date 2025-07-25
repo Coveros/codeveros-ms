@@ -1,16 +1,19 @@
 import { DbOptions } from './interfaces';
 import * as orm from './orm';
+import type { ConnectOptions } from './orm';
 import { getLogger } from './utils/get-logger';
 
 const logger = getLogger();
 const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function connect(uri: string, options: orm.ConnectionOptions): Promise<void> {
+async function connect(uri: string, options: ConnectOptions): Promise<void> {
   try {
     await orm.connect(uri, options);
     logger.info('Connected to database');
   } catch (err) {
-    logger.error(`Failed to connect to db on initial attempt: ${err.name}, ${err.message} - ${err.reason}`);
+    if (err instanceof Error) {
+      logger.error(`Failed to connect to db on initial attempt: ${err.name}, ${err.message}`);
+    }
     // Wait for a bit, then try to connect again
     await timeout(5000);
     logger.info('Retrying initial connect...');
@@ -21,12 +24,8 @@ async function connect(uri: string, options: orm.ConnectionOptions): Promise<voi
 export function connectToDb(dbOptions: DbOptions) {
   logger.info('Connecting to database...');
 
-  const options: orm.ConnectionOptions = {
-    poolSize: 5,
-    useCreateIndex: true,
-    useFindAndModify: false,
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+  const options: ConnectOptions = {
+    maxPoolSize: 5,
   };
 
   if (dbOptions.database) {

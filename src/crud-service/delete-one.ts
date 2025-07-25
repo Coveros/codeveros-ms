@@ -11,7 +11,7 @@ export async function deleteOne(ctx: Context) {
     ctx.throw(404, `${Model.modelName} not found`);
   }
 
-  const deletedItem = await Model.findByIdAndRemove(id);
+  const deletedItem = await Model.findByIdAndDelete(id);
 
   if (!deletedItem) {
     ctx.throw(500, `Error deleting ${Model.modelName}`);
