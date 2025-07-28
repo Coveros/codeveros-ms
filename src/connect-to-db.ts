@@ -1,12 +1,11 @@
 import { DbOptions } from './interfaces';
 import * as orm from './orm';
-import type { ConnectOptions } from './orm';
 import { getLogger } from './utils/get-logger';
 
 const logger = getLogger();
 const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function connect(uri: string, options: ConnectOptions): Promise<void> {
+async function connect(uri: string, options: orm.ConnectOptions): Promise<void> {
   try {
     await orm.connect(uri, options);
     logger.info('Connected to database');
@@ -24,7 +23,7 @@ async function connect(uri: string, options: ConnectOptions): Promise<void> {
 export function connectToDb(dbOptions: DbOptions) {
   logger.info('Connecting to database...');
 
-  const options: ConnectOptions = {
+  const options: orm.ConnectOptions = {
     maxPoolSize: 5,
   };
 
