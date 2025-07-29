@@ -1,6 +1,6 @@
-import { Context, Middleware } from 'koa';
+import { Context, Middleware, HttpError } from 'koa';
 import * as Router from 'koa-better-router';
-import * as koaBody from 'koa-body';
+import koaBody from 'koa-body';
 
 import { Route } from './interfaces';
 import * as orm from './orm';
@@ -48,10 +48,14 @@ export function errorHandler(): Middleware {
             ctx.body.invalidAttributes[field] = [{ rule: error.kind, message: error.message }];
           }
         }
-      } else {
-        logger.error('Caught Error with request: ', err);
+      } else if (err instanceof HttpError) {
+        logger.error('Caught HttpError with request: ', err);
         ctx.status = err.status || 500;
         ctx.body = { msg: err.expose && err.message ? err.message : 'Error performing action' };
+      } else {
+        logger.error('Caught Error with request: ', err);
+        ctx.status = 500;
+        ctx.body = { msg: 'Unknown error' };
       }
       ctx.app.emit('error', err, ctx);
     }

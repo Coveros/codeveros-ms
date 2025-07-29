@@ -10,7 +10,7 @@ on:
     branches: [ main ]
 
 env:
-  node_version: 14
+  node_version: 22
 
 jobs:
   build:
